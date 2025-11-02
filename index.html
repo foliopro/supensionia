@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SUPENSION IA - Acceso</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    img {
+      width: 400px;
+      margin-bottom: 1rem;
+    }
+    input {
+      padding: 0.5rem;
+      width: 100%;
+      margin: 1rem 0;
+      border-radius: 0.5rem;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+    .error {
+      color: red;
+    }
+    .saludo {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+    .hidden {
+      display: none;
+    }
+    #mensajeFinal {
+      margin-top: 1rem;
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="bienvenidaContainer">
+    <img src="https://i.ibb.co/G4FGnGVK/Portada-Acceso.png" alt="SUPENSION IA logo">
+    <h1>SUPENSION IA</h1>
+    <p>Bienvenido a la plataforma de apoyo para abogados. SUPENSION IA potencia tu trabajo con herramientas eficaces para mejorar tu productividad.</p>
+    <input type="password" id="referencia" placeholder="Ingresa tu código de referencia">
+    <div id="mensaje" class="error"></div>
+    <button onclick="validarAcceso()">Ingresar</button>
+    <button onclick="window.location.href='https://wa.me/573117715353'">¿No tienes código? Contáctanos por WhatsApp</button>
+    <div class="saludo" id="saludo"></div>
+    <div id="mensajeFinal"></div>
+  </div>
+
+  <script>
+    const BLOQUEO_MS = 3600000; // 1 hora
+    let intentos = 0;
+
+    window.onload = () => {
+      const referenciaGuardada = localStorage.getItem('referencia');
+      const expiracion = localStorage.getItem('expiracion');
+      const ahora = Date.now();
+
+      if (referenciaGuardada && (!expiracion || ahora < parseInt(expiracion))) {
+        redirigirPlataforma();
+      } else {
+        localStorage.removeItem('referencia');
+        localStorage.removeItem('expiracion');
+        document.getElementById('referencia').focus();
+      }
+    }
+
+    async function validarAcceso() {
+      const refInput = document.getElementById('referencia');
+      const mensaje = document.getElementById('mensaje');
+      const saludo = document.getElementById('saludo');
+      const referencia = refInput.value.trim();
+      if (!referencia) return;
+
+      const ahora = Date.now();
+      const expiracion = localStorage.getItem('expiracion');
+      if (expiracion && ahora < parseInt(expiracion)) {
+        mensaje.innerText = 'Demasiados intentos. Intenta más tarde.';
+        return;
+      }
+
+      const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSd5yoasP3pxVzZvV-XwaurTOhxNl00JtMRh0bLYnp-SEmg3L-Q1wXH9Q7u-fLZqjJaoY6wmmrD1Y4K/pub?output=csv';
+      const response = await fetch(url);
+      const data = await response.text();
+      const rows = data.split('\n').slice(1);
+
+      let accesoPermitido = false;
+      let nombreUsuario = '';
+
+      for (const row of rows) {
+        const [usuario, clave, fechaVencimiento, estado] = row.split(',').map(c => c.trim());
+        if (clave === referencia) {
+          const hoy = new Date();
+          const vencimiento = new Date(fechaVencimiento);
+          if (hoy <= vencimiento) {
+            accesoPermitido = true;
+            nombreUsuario = usuario;
+            break;
+          }
+        }
+      }
+
+      if (accesoPermitido) {
+        saludo.innerText = obtenerSaludo() + ", " + nombreUsuario;
+        mensaje.innerText = '';
+        localStorage.setItem('referencia', referencia);
+        setTimeout(() => {
+          redirigirPlataforma();
+        }, 1000);
+      } else {
+        intentos++;
+        if (intentos >= 3) {
+          localStorage.setItem('expiracion', ahora + BLOQUEO_MS);
+          mensaje.innerText = 'Demasiados intentos fallidos. Intenta de nuevo en 1 hora.';
+        } else {
+          mensaje.innerText = 'Referencia inválida o vencida';
+        }
+      }
+    }
+
+    function obtenerSaludo() {
+      const hora = new Date().getHours();
+      if (hora < 12) return 'Buenos días';
+      if (hora < 18) return 'Buenas tardes';
+      return 'Buenas noches';
+    }
+
+    function redirigirPlataforma() {
+      window.location.href = 'plataforma.html'; // Aquí cambias si usas otro nombre o ruta
+    }
+  </script>
+</body>
+</html>
